@@ -687,7 +687,7 @@ fn draw_laid_shaped(
                     if let (true, Some((emb_name, metrics))) = (non_win_ansi, &latin_embedded) {
                         let slant = if t.italic { ITALIC_SLANT } else { 0.0 };
                         out.extend(format!("/{emb_name} {} Tf 1 0 {} 1 {} {} Tm ", n(t.size), n(slant), n(pen), n(y)).bytes());
-                        let s = s.replace('\t', " ");
+                        let normalized = s.replace('\t', " ");
                         if tw > 0.0 && s.contains(' ') {
                             let adjust = -tw * 1000.0 / t.size;
                             out.push(b'[');
@@ -697,17 +697,17 @@ fn draw_laid_shaped(
                                     out.extend(sp);
                                     out.extend(format!(" {} ", n(adjust)).bytes());
                                 }
-                                let enc = metrics.encode(word).map(|b| literal(&b)).ok_or_else(|| EditError::Invalid(format!("can't encode {word:?}")))?;
+                                let enc = metrics.encode(&word.replace('\t', " ")).map(|b| literal(&b)).ok_or_else(|| EditError::Invalid(format!("can't encode {word:?}")))?;
                                 out.extend(enc);
                             }
                             out.extend_from_slice(b"] TJ\n");
                         } else {
-                            let enc = metrics.encode(&s).map(|b| literal(&b)).ok_or_else(|| EditError::Invalid(format!("can't encode {s:?}")))?;
+                            let enc = metrics.encode(&normalized).map(|b| literal(&b)).ok_or_else(|| EditError::Invalid(format!("can't encode {normalized:?}")))?;
                             out.extend(enc);
                             out.extend_from_slice(b" Tj\n");
                         }
                         current = Some(emb_name.as_str());
-                        pen += pdfcraft_fonts::latin_face_width(t.bold, &s, t.size) + tw * s.matches(' ').count() as f64;
+                        pen += pdfcraft_fonts::latin_face_width(t.bold, &normalized, t.size) + tw * s.matches(' ').count() as f64;
                     } else {
                         out.extend(format!("/{latin} {} Tf {} Tw 1 0 0 1 {} {} Tm ", n(t.size), n(tw), n(pen), n(y)).bytes());
                         out.extend(literal(&win_ansi(s)));
