@@ -688,11 +688,26 @@ fn draw_laid_shaped(
                         let slant = if t.italic { ITALIC_SLANT } else { 0.0 };
                         out.extend(format!("/{emb_name} {} Tf 1 0 {} 1 {} {} Tm ", n(t.size), n(slant), n(pen), n(y)).bytes());
                         let s = s.replace('\t', " ");
-                        let enc = metrics.encode(&s).map(|b| literal(&b)).ok_or_else(|| EditError::Invalid(format!("can't encode {s:?}")))?;
-                        out.extend(enc);
-                        out.extend_from_slice(b" Tj\n");
+                        if tw > 0.0 && s.contains(' ') {
+                            let adjust = -tw * 1000.0 / t.size;
+                            out.push(b'[');
+                            for (k, word) in s.split(' ').enumerate() {
+                                if k > 0 {
+                                    let sp = metrics.encode(" ").map(|b| literal(&b)).ok_or_else(|| EditError::Invalid("can't encode space".into()))?;
+                                    out.extend(sp);
+                                    out.extend(format!(" {} ", n(adjust)).bytes());
+                                }
+                                let enc = metrics.encode(word).map(|b| literal(&b)).ok_or_else(|| EditError::Invalid(format!("can't encode {word:?}")))?;
+                                out.extend(enc);
+                            }
+                            out.extend_from_slice(b"] TJ\n");
+                        } else {
+                            let enc = metrics.encode(&s).map(|b| literal(&b)).ok_or_else(|| EditError::Invalid(format!("can't encode {s:?}")))?;
+                            out.extend(enc);
+                            out.extend_from_slice(b" Tj\n");
+                        }
                         current = Some(emb_name.as_str());
-                        pen += pdfcraft_fonts::latin_face_width(t.bold, &s, t.size);
+                        pen += pdfcraft_fonts::latin_face_width(t.bold, &s, t.size) + tw * s.matches(' ').count() as f64;
                     } else {
                         out.extend(format!("/{latin} {} Tf {} Tw 1 0 0 1 {} {} Tm ", n(t.size), n(tw), n(pen), n(y)).bytes());
                         out.extend(literal(&win_ansi(s)));
