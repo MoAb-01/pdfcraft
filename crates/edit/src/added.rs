@@ -645,10 +645,7 @@ fn draw_laid_shaped(
         _ => false,
     });
     let latin_embedded = if has_non_win_ansi {
-        let face = pdfcraft_fonts::document_latin_fonts(t.bold)
-            .into_iter()
-            .next()
-            .ok_or_else(|| EditError::Invalid("this build has no Latin document font to draw the text with".into()))?;
+        let face = pdfcraft_fonts::document_latin_font(t.bold);
         let mut page_fonts = taken.clone();
         for (k, v) in fonts.iter() {
             page_fonts.set(k.clone(), v.clone());
@@ -676,7 +673,6 @@ fn draw_laid_shaped(
         let x = match t.align {
             // A right-to-left paragraph's unstretched last line ends at the right edge.
             Align::Justify if *rtl => r[2] - w - tw * spaces as f64,
-            Align::Left if *rtl => r[2] - w,
             Align::Left | Align::Justify => r[0],
             Align::Center => r[0] + ((r[2] - r[0]) - w) / 2.0,
             Align::Right => r[2] - w,
@@ -691,11 +687,12 @@ fn draw_laid_shaped(
                     if let (true, Some((emb_name, metrics))) = (non_win_ansi, &latin_embedded) {
                         let slant = if t.italic { ITALIC_SLANT } else { 0.0 };
                         out.extend(format!("/{emb_name} {} Tf 1 0 {} 1 {} {} Tm ", n(t.size), n(slant), n(pen), n(y)).bytes());
-                        let enc = metrics.encode(s).map(|b| literal(&b)).ok_or_else(|| EditError::Invalid(format!("can't encode {s:?}")))?;
+                        let s = s.replace('\t', " ");
+                        let enc = metrics.encode(&s).map(|b| literal(&b)).ok_or_else(|| EditError::Invalid(format!("can't encode {s:?}")))?;
                         out.extend(enc);
                         out.extend_from_slice(b" Tj\n");
                         current = Some(emb_name.as_str());
-                        pen += pdfcraft_fonts::latin_face_width(t.bold, s, t.size);
+                        pen += pdfcraft_fonts::latin_face_width(t.bold, &s, t.size);
                     } else {
                         out.extend(format!("/{latin} {} Tf {} Tw 1 0 0 1 {} {} Tm ", n(t.size), n(tw), n(pen), n(y)).bytes());
                         out.extend(literal(&win_ansi(s)));
@@ -836,10 +833,7 @@ const ITALIC_SLANT: f64 = 0.212_556_56;
 /// page's font names: the new resource never takes one, and a copy of the face already there is
 /// reused.
 fn draw_latin_face(doc: &mut Document, t: &AddedText, taken: &Dict, res: &mut Dict, out: &mut Vec<u8>) -> Result<(), EditError> {
-    let face = pdfcraft_fonts::document_latin_fonts(t.bold)
-        .into_iter()
-        .next()
-        .ok_or_else(|| EditError::Invalid("this build has no Latin document font to draw the text with".into()))?;
+    let face = pdfcraft_fonts::document_latin_font(t.bold);
     let mut page_fonts = taken.clone();
     let name = pdfcraft_fonts::embedding::embed(doc, &mut page_fonts, face.bytes, &face.name())
         .map_err(|e| EditError::Invalid(format!("couldn't embed the {} font: {e}", face.name())))?;

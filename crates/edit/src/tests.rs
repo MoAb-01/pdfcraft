@@ -3423,6 +3423,9 @@ fn turkish_added_text_is_embedded_in_inter_not_refused() {
 
 #[test]
 fn mixed_turkish_and_arabic_is_supported_and_drawn() {
+    if pdfcraft_fonts::document_arabic_font().is_none() {
+        return;
+    }
     let mut doc = fixture();
     let mixed_text = AddedText {
         rect: [72.0, 600.0, 300.0, 700.0],
