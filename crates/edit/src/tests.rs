@@ -3492,6 +3492,18 @@ fn mixed_turkish_and_arabic_is_supported_and_drawn() {
         Content::Text(t) => assert_eq!(t.text, "ğggsadas مرحبا"),
         _ => panic!("expected Content::Text"),
     }
+
+    // 3. Both embedded Latin (PCFull) and shaped Arabic (PCAr) fonts are registered and drawn
+    let pages = pdfcraft_model::pages(&doc);
+    let res = doc.resolve(pages[0].dict.get(b"Resources").unwrap());
+    let fonts = doc.resolve(res.as_dict().unwrap().get(b"Font").unwrap());
+    let fonts_dict = fonts.as_dict().unwrap();
+    assert!(fonts_dict.iter().any(|(k, _)| k.starts_with(b"PCFull")), "embedded Latin font registered");
+    assert!(fonts_dict.iter().any(|(k, _)| k.starts_with(b"PCAr")), "shaped Arabic font registered");
+
+    let stream = streams(&doc, 0).join("");
+    assert!(stream.contains("/PCFull"), "Latin font used in stream: {stream}");
+    assert!(stream.contains("/PCAr"), "Arabic font used in stream: {stream}");
 }
 
 fn xobject(doc: &Document, page: usize, name: &[u8]) -> Option<pdfcraft_cos::ObjRef> {

@@ -506,7 +506,7 @@ fn shaped_layout(t: &AddedText, line: &str, rtl: bool) -> Result<(Vec<Piece>, f6
         .map(|p| match p {
             Piece::Latin(s) => {
                 if s.chars().any(|c| !pdfcraft_fonts::win_ansi_encodable(c)) {
-                    pdfcraft_fonts::latin_face_width(t.bold, s, t.size)
+                    latin_width(t, s)
                 } else {
                     t.family.width(s, t.size, t.bold, t.italic)
                 }
